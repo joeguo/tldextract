@@ -1,7 +1,7 @@
 tldextract
 ==========
 
-Extract root domain, subdomain name, tld from a url
+Extract root domain, subdomain name, tld from a url, using the Public Suffix List.
 
 Installation
 ==========

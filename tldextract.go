@@ -66,7 +66,7 @@ func (extract *TLDExtract) Extract(u string) *Result {
 
 	index := strings.IndexFunc(u, func(r rune) bool {
 			switch r{
-			case '&', '/', '?', ':':
+			case '&', '/', '?', ':', '#':
 				return true
 			}
 			return false
