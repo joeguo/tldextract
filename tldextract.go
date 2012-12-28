@@ -74,10 +74,6 @@ func (extract *TLDExtract) Extract(u string) *Result {
 	if index != -1 {
 		u = u[0:index]
 	}
-//	u = strings.Split(u, "&")[0]
-//	u = strings.Split(u, "/")[0]
-//	u = strings.Split(u, "?")[0]
-//	u = strings.Split(u, ":")[0]
 
 	if strings.HasSuffix(u, ".html") {
 		u = u[0:len(u) - len(".html")]
