@@ -46,7 +46,7 @@ Output will look like:
   &{Flag:2 Sub: Root:218.15.32.76 Tld:};http://218.15.32.76
   &{Flag:1 Sub: Root:google Tld:com};http://google.com?q=cats
 ```
-Flag value means
+Flag value meaning
 ```go
 const (
 	Malformed = iota
