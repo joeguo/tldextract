@@ -10,6 +10,7 @@ import (
 	"fmt"
 )
 
+//used for Result.Flag
 const (
 	Malformed = iota
 	Domain
@@ -31,11 +32,11 @@ type TLDExtract struct {
 }
 
 var (
-	schemaregex = regexp.MustCompile("^([abcdefghijklmnopqrstuvwxyz0123456789\\+\\-\\.]+:)?//")
-	domainregex = regexp.MustCompile("^[a-z0-9-]{2,63}$")
-	ip4regex    = regexp.MustCompile("(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])")
+	schemaregex = regexp.MustCompile(`^([abcdefghijklmnopqrstuvwxyz0123456789\+\-\.]+:)?//`)
+	domainregex = regexp.MustCompile(`^[a-z0-9-]{2,63}$`)
+	ip4regex    = regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])`)
 )
-
+//New create a new *TLDExtract, it may be shared between goroutines,we usually need a single instance in an application.
 func New(cacheFile string, debug bool) *TLDExtract {
 	data, err := ioutil.ReadFile(cacheFile)
 	if err != nil {
