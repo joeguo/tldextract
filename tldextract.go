@@ -106,20 +106,28 @@ func (extract *TLDExtract) extract(url string) *Result {
 
 func (extract *TLDExtract) extractTld(url string) (string, string) {
 	spl := strings.Split(url, ".")
+	// Avoid checking urls with many labels in the subdomain (e.g. a.b.c.d.e.f.g.h.i.j.k.l.github.com)
+	const MAX_TLD_PLUS_DOM_LEN = 5
+	base_subdomains := ""
+	num_labels := len(spl)
+	if num_labels > MAX_TLD_PLUS_DOM_LEN {
+		base_subdomains = strings.Join(spl[0:num_labels-MAX_TLD_PLUS_DOM_LEN], ".") + "."
+		spl = spl[num_labels-MAX_TLD_PLUS_DOM_LEN:]
+	}
 	for i := range (spl) {
 		maybe_tld := strings.Join(spl[i:], ".")
 		exception_tld := "!" + maybe_tld
 		if _, ok := extract.tlds[exception_tld]; ok {
-			return strings.Join(spl[:i + 1], "."), strings.Join(spl[i + 1:], ".")
+			return base_subdomains + strings.Join(spl[:i + 1], "."), strings.Join(spl[i + 1:], ".")
 		}
 		if len(spl) > i + 1 {
 			wildcard_tld := "*." + strings.Join(spl[i + 1:], ".")
 			if _, ok := extract.tlds[wildcard_tld]; ok {
-				return strings.Join(spl[:i], "."), maybe_tld
+				return base_subdomains + strings.Join(spl[:i], "."), maybe_tld
 			}
 		}
 		if _, ok := extract.tlds[maybe_tld]; ok {
-			return strings.Join(spl[:i], "."), maybe_tld
+			return base_subdomains + strings.Join(spl[:i], "."), maybe_tld
 		}
 	}
 	return url, ""
