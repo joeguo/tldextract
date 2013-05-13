@@ -25,6 +25,7 @@ func aTestA(t *testing.T) {
 func TestAll(t *testing.T) {
 	cases := map[string]*Result{"http://www.google.com": &Result{Flag:Domain, Sub:"www", Root:"google", Tld:"com"},
 		"https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CDQQFjAA&url=%68%74%74%70%3a%2f%2f%67%72%6f%75%70%73%2e%67%6f%6f%67%6c%65%2e%63%6f%6d%2f%67%72%6f%75%70%2f%67%6f%6c%61%6e%67%2d%6e%75%74%73%2f%62%72%6f%77%73%65%5f%74%68%72%65%61%64%2f%74%68%72%65%61%64%2f%62%31%61%36%65%31%66%38%37%30%32%62%33%31%31%62&ei=okjQULibA9GYiAfk3IDYDw&usg=AFQjCNFVxgAwHXnmEJWVURboSTiygUMTaQ&sig2=3AIxkh4TR5QYWGXCJtBSZg": &Result{Flag:Domain, Sub:"www", Root:"google", Tld:"com.hk"},
+		"http://joe.blogspot.co.uk":&Result{Flag:Domain, Sub:"", Root:"joe", Tld:"blogspot.co.uk"},
 		"ftp://johndoe:5cr1p7k1dd13@1337.warez.com:2501/":&Result{Flag:Domain, Sub:"1337", Root:"warez", Tld:"com"},
 		"git+ssh://www.github.com:8443/": &Result{Flag:Domain, Sub:"www", Root:"github", Tld:"com"},
 		"http://www.!github.com:8443/": &Result{Flag:Malformed},
