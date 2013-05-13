@@ -27,8 +27,14 @@ type Result struct {
 
 type TLDExtract struct {
 	CacheFile string
-	tlds map[string]bool
+	root *Trie
 	debug     bool
+}
+
+type Trie struct {
+	ExceptRule bool
+	ValidTld bool
+	matches map[string]*Trie
 }
 
 var (
@@ -47,13 +53,18 @@ func New(cacheFile string, debug bool) *TLDExtract {
 		ioutil.WriteFile(cacheFile, data, 0644)
 	}
 	ts := strings.Split(string(data), "\n")
-	tlds := make(map[string]bool, len(ts))
+	newMap := make(map[string]*Trie)
+	root := &Trie{ExceptRule:false, ValidTld:false, matches:newMap}
 	for _, t := range (ts) {
 		if t != "" {
-			tlds[t] = true
+			exceptionRule := t[0] == '!'
+			if exceptionRule {
+				t = t[1:]
+			}
+			root.add(strings.Split(t, "."), exceptionRule)
 		}
 	}
-	return &TLDExtract{CacheFile:cacheFile, tlds:tlds, debug:debug}
+	return &TLDExtract{CacheFile:cacheFile, root:root, debug:debug}
 }
 
 func (extract *TLDExtract) Extract(u string) *Result {
@@ -104,25 +115,60 @@ func (extract *TLDExtract) extract(url string) *Result {
 	return &Result{Flag:Malformed}
 }
 
-func (extract *TLDExtract) extractTld(url string) (string, string) {
+func (extract *TLDExtract) extractTld(url string) (domain, tld string) {
 	spl := strings.Split(url, ".")
-	for i := range (spl) {
-		maybe_tld := strings.Join(spl[i:], ".")
-		exception_tld := "!" + maybe_tld
-		if _, ok := extract.tlds[exception_tld]; ok {
-			return strings.Join(spl[:i + 1], "."), strings.Join(spl[i + 1:], ".")
-		}
-		if len(spl) > i + 1 {
-			wildcard_tld := "*." + strings.Join(spl[i + 1:], ".")
-			if _, ok := extract.tlds[wildcard_tld]; ok {
-				return strings.Join(spl[:i], "."), maybe_tld
-			}
-		}
-		if _, ok := extract.tlds[maybe_tld]; ok {
-			return strings.Join(spl[:i], "."), maybe_tld
+	tldIndex, validTld := extract.getTldIndex(spl)
+	if validTld {
+		domain = strings.Join(spl[:tldIndex], ".")
+		tld = strings.Join(spl[tldIndex:], ".")
+	} else {
+		domain = url
+	}
+	return
+}
+
+func (t *Trie) add (labels []string, ex bool) {
+	numlabs := len(labels)
+	if numlabs == 0 {
+		return
+	}
+	lab := labels[numlabs-1]
+	m, found := t.matches[lab]
+	if !found {
+		//Only the last label will be marked as an exception rule or as a validTld
+		lastlab := numlabs == 1
+		except := ex && lastlab
+		valid := !ex && lastlab && lab != "*"
+		newMap := make(map[string]*Trie)
+		t.matches[lab] = &Trie{ExceptRule:except, ValidTld:valid, matches:newMap}
+		m = t.matches[lab]
+	}
+	m.add(labels[:numlabs-1], ex)
+}
+
+func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
+	t := extract.root
+	parentValid := false
+	for i:=len(labels)-1; i>=0; i-- {
+		lab := labels[i]
+		n, found := t.matches[lab]
+		_, starfound := t.matches["*"]
+		switch {
+		case found && !n.ExceptRule:
+			parentValid = n.ValidTld || starfound
+			t = n
+		// Found an exception rule
+		case found:
+			fallthrough
+		case parentValid:
+			return i+1, i+1 < len(labels)
+		case starfound:
+			parentValid = true
+		default:
+			return -1, false
 		}
 	}
-	return url, ""
+	return -1, false
 }
 
 //return sub domain,root domain
@@ -152,7 +198,6 @@ func download() ([]byte, error) {
 		if line != "" && !strings.HasPrefix(line, "//") {
 			buffer.WriteString(line)
 			buffer.WriteString("\n")
-
 		}
 	}
 
