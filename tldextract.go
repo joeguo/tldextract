@@ -117,7 +117,7 @@ func (extract *TLDExtract) extract(url string) *Result {
 
 func (extract *TLDExtract) extractTld(url string) (domain, tld string) {
 	spl := strings.Split(url, ".")
-	tldIndex, validTld := extract.root.getTldIndex(spl, len(spl)-1)
+	tldIndex, validTld := extract.getTldIndex(spl)
 	if validTld {
 		domain = strings.Join(spl[:tldIndex], ".")
 		tld = strings.Join(spl[tldIndex:], ".")
@@ -133,7 +133,6 @@ func (t *Trie) add (labels []string, ex bool) {
 		return
 	}
 	lab := labels[numlabs-1]
-	fmt.Println(lab)
 	m, found := t.matches[lab]
 	if !found {
 		//Only the last label will be marked as an exception rule or as a validTld
@@ -147,29 +146,27 @@ func (t *Trie) add (labels []string, ex bool) {
 	m.add(labels[:numlabs-1], ex)
 }
 
-func (t *Trie) getTldIndex (labels []string, ind int) (int, bool) {
-	if ind<0 {
-		return -1, false
-	}
-	lab := labels[ind]
-	n, found := t.matches[lab]
-	_, starfound := t.matches["*"]
-	switch {
-	case found && !n.ExceptRule:
-		tldInd, ok := n.getTldIndex(labels, ind-1)
-		if !ok && starfound {
-			return ind, true
+func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
+	t := extract.root
+	parentValid := false
+	for i:=len(labels)-1; i>=0; i-- {
+		lab := labels[i]
+		n, found := t.matches[lab]
+		_, starfound := t.matches["*"]
+		switch {
+		case found && !n.ExceptRule:
+			parentValid = n.ValidTld || starfound
+			t = n
+		// Found an exception rule
+		case found:
+			fallthrough
+		case parentValid:
+			return i+1, i+1 < len(labels)
+		case starfound:
+			parentValid = true
+		default:
+			return -1, false
 		}
-		return tldInd, ok
-	// Found an exception rule
-	case found:
-		fallthrough
-	case t.ValidTld:
-		return ind+1, ind+1 < len(labels)
-	case starfound:
-		return ind, true //ind>0
-	default:
-		return -1, false
 	}
 	return -1, false
 }
