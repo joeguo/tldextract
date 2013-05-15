@@ -27,7 +27,7 @@ type Result struct {
 
 type TLDExtract struct {
 	CacheFile string
-	root *Trie
+	rootNode *Trie
 	debug     bool
 }
 
@@ -39,7 +39,7 @@ type Trie struct {
 
 var (
 	schemaregex = regexp.MustCompile(`^([abcdefghijklmnopqrstuvwxyz0123456789\+\-\.]+:)?//`)
-	domainregex = regexp.MustCompile(`^[a-z0-9-]{2,63}$`)
+	domainregex = regexp.MustCompile(`^[a-z0-9-]{1,63}$`)
 	ip4regex    = regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])`)
 )
 //New create a new *TLDExtract, it may be shared between goroutines,we usually need a single instance in an application.
@@ -54,17 +54,34 @@ func New(cacheFile string, debug bool) *TLDExtract {
 	}
 	ts := strings.Split(string(data), "\n")
 	newMap := make(map[string]*Trie)
-	root := &Trie{ExceptRule:false, ValidTld:false, matches:newMap}
+	rootNode := &Trie{ExceptRule:false, ValidTld:false, matches:newMap}
 	for _, t := range (ts) {
 		if t != "" {
 			exceptionRule := t[0] == '!'
 			if exceptionRule {
 				t = t[1:]
 			}
-			root.add(strings.Split(t, "."), exceptionRule)
+			addTldRule(rootNode, strings.Split(t, "."), exceptionRule)
 		}
 	}
-	return &TLDExtract{CacheFile:cacheFile, root:root, debug:debug}
+	return &TLDExtract{CacheFile:cacheFile, rootNode:rootNode, debug:debug}
+}
+
+func addTldRule(rootNode *Trie, labels []string, ex bool) {
+	numlabs := len(labels)
+	t := rootNode
+	for i:=numlabs-1; i>=0; i-- {
+		lab := labels[i]
+		m, found := t.matches[lab]
+		if !found {
+			except := ex
+			valid := !ex && i==0
+			newMap := make(map[string]*Trie)
+			t.matches[lab] = &Trie{ExceptRule:except, ValidTld:valid, matches:newMap}
+			m = t.matches[lab]
+		}
+		t = m
+	}
 }
 
 func (extract *TLDExtract) Extract(u string) *Result {
@@ -127,27 +144,8 @@ func (extract *TLDExtract) extractTld(url string) (domain, tld string) {
 	return
 }
 
-func (t *Trie) add (labels []string, ex bool) {
-	numlabs := len(labels)
-	if numlabs == 0 {
-		return
-	}
-	lab := labels[numlabs-1]
-	m, found := t.matches[lab]
-	if !found {
-		//Only the last label will be marked as an exception rule or as a validTld
-		lastlab := numlabs == 1
-		except := ex && lastlab
-		valid := !ex && lastlab && lab != "*"
-		newMap := make(map[string]*Trie)
-		t.matches[lab] = &Trie{ExceptRule:except, ValidTld:valid, matches:newMap}
-		m = t.matches[lab]
-	}
-	m.add(labels[:numlabs-1], ex)
-}
-
 func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
-	t := extract.root
+	t := extract.rootNode
 	parentValid := false
 	for i:=len(labels)-1; i>=0; i-- {
 		lab := labels[i]
@@ -161,7 +159,7 @@ func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
 		case found:
 			fallthrough
 		case parentValid:
-			return i+1, i+1 < len(labels)
+			return i+1, true
 		case starfound:
 			parentValid = true
 		default:
