@@ -56,7 +56,7 @@ func New(cacheFile string, debug bool) *TLDExtract {
 	newMap := make(map[string]*Trie)
 	rootNode := &Trie{ExceptRule:false, ValidTld:false, matches:newMap}
 	for _, t := range (ts) {
-		if t != "" {
+		if t != "" && !strings.HasPrefix(t, "//") {
 			exceptionRule := t[0] == '!'
 			if exceptionRule {
 				t = t[1:]
