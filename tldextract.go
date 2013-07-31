@@ -152,9 +152,10 @@ func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
 		lab := labels[i]
 		n, found := t.matches[lab]
 		_, starfound := t.matches["*"]
+
 		switch {
 		case found && !n.ExceptRule:
-			parentValid = n.ValidTld || starfound
+			parentValid = n.ValidTld
 			t = n
 		// Found an exception rule
 		case found:
