@@ -57,6 +57,7 @@ func New(cacheFile string, debug bool) *TLDExtract {
 	rootNode := &Trie{ExceptRule:false, ValidTld:false, matches:newMap}
 	for _, t := range (ts) {
 		if t != "" && !strings.HasPrefix(t, "//") {
+			t = strings.TrimSpace(t)
 			exceptionRule := t[0] == '!'
 			if exceptionRule {
 				t = t[1:]
@@ -151,9 +152,10 @@ func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
 		lab := labels[i]
 		n, found := t.matches[lab]
 		_, starfound := t.matches["*"]
+
 		switch {
 		case found && !n.ExceptRule:
-			parentValid = n.ValidTld || starfound
+			parentValid = n.ValidTld
 			t = n
 		// Found an exception rule
 		case found:
