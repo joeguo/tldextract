@@ -1,13 +1,13 @@
 package tldextract
 
 import (
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"regexp"
-	"net"
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"regexp"
+	"strings"
 )
 
 //used for Result.Flag
@@ -27,14 +27,14 @@ type Result struct {
 
 type TLDExtract struct {
 	CacheFile string
-	rootNode *Trie
+	rootNode  *Trie
 	debug     bool
 }
 
 type Trie struct {
 	ExceptRule bool
-	ValidTld bool
-	matches map[string]*Trie
+	ValidTld   bool
+	matches    map[string]*Trie
 }
 
 var (
@@ -42,20 +42,21 @@ var (
 	domainregex = regexp.MustCompile(`^[a-z0-9-]{1,63}$`)
 	ip4regex    = regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])`)
 )
+
 //New create a new *TLDExtract, it may be shared between goroutines,we usually need a single instance in an application.
-func New(cacheFile string, debug bool) *TLDExtract {
+func New(cacheFile string, debug bool) (*TLDExtract, error) {
 	data, err := ioutil.ReadFile(cacheFile)
 	if err != nil {
 		data, err = download()
 		if err != nil {
-			panic(err)
+			return &TLDExtract{}, err
 		}
 		ioutil.WriteFile(cacheFile, data, 0644)
 	}
 	ts := strings.Split(string(data), "\n")
 	newMap := make(map[string]*Trie)
-	rootNode := &Trie{ExceptRule:false, ValidTld:false, matches:newMap}
-	for _, t := range (ts) {
+	rootNode := &Trie{ExceptRule: false, ValidTld: false, matches: newMap}
+	for _, t := range ts {
 		if t != "" && !strings.HasPrefix(t, "//") {
 			t = strings.TrimSpace(t)
 			exceptionRule := t[0] == '!'
@@ -65,20 +66,21 @@ func New(cacheFile string, debug bool) *TLDExtract {
 			addTldRule(rootNode, strings.Split(t, "."), exceptionRule)
 		}
 	}
-	return &TLDExtract{CacheFile:cacheFile, rootNode:rootNode, debug:debug}
+
+	return &TLDExtract{CacheFile: cacheFile, rootNode: rootNode, debug: debug}, nil
 }
 
 func addTldRule(rootNode *Trie, labels []string, ex bool) {
 	numlabs := len(labels)
 	t := rootNode
-	for i:=numlabs-1; i>=0; i-- {
+	for i := numlabs - 1; i >= 0; i-- {
 		lab := labels[i]
 		m, found := t.matches[lab]
 		if !found {
 			except := ex
-			valid := !ex && i==0
+			valid := !ex && i == 0
 			newMap := make(map[string]*Trie)
-			t.matches[lab] = &Trie{ExceptRule:except, ValidTld:valid, matches:newMap}
+			t.matches[lab] = &Trie{ExceptRule: except, ValidTld: valid, matches: newMap}
 			m = t.matches[lab]
 		}
 		t = m
@@ -91,22 +93,22 @@ func (extract *TLDExtract) Extract(u string) *Result {
 	u = schemaregex.ReplaceAllString(u, "")
 	i := strings.Index(u, "@")
 	if i != -1 {
-		u = u[i + 1:]
+		u = u[i+1:]
 	}
 
 	index := strings.IndexFunc(u, func(r rune) bool {
-			switch r{
-			case '&', '/', '?', ':', '#':
-				return true
-			}
-			return false
-		})
+		switch r {
+		case '&', '/', '?', ':', '#':
+			return true
+		}
+		return false
+	})
 	if index != -1 {
 		u = u[0:index]
 	}
 
 	if strings.HasSuffix(u, ".html") {
-		u = u[0:len(u) - len(".html")]
+		u = u[0 : len(u)-len(".html")]
 	}
 	if extract.debug {
 		fmt.Printf("%s;%s\n", u, input)
@@ -120,17 +122,17 @@ func (extract *TLDExtract) extract(url string) *Result {
 		ip := net.ParseIP(url)
 		if ip != nil {
 			if ip4regex.MatchString(url) {
-				return &Result{Flag:Ip4, Root:url}
+				return &Result{Flag: Ip4, Root: url}
 			}
-			return &Result{Flag:Ip6, Root:url}
+			return &Result{Flag: Ip6, Root: url}
 		}
-		return &Result{Flag:Malformed}
+		return &Result{Flag: Malformed}
 	}
 	sub, root := subdomain(domain)
 	if domainregex.MatchString(root) {
-		return &Result{Flag:Domain, Root:root, Sub:sub, Tld:tld}
+		return &Result{Flag: Domain, Root: root, Sub: sub, Tld: tld}
 	}
-	return &Result{Flag:Malformed}
+	return &Result{Flag: Malformed}
 }
 
 func (extract *TLDExtract) extractTld(url string) (domain, tld string) {
@@ -145,10 +147,10 @@ func (extract *TLDExtract) extractTld(url string) (domain, tld string) {
 	return
 }
 
-func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
+func (extract *TLDExtract) getTldIndex(labels []string) (int, bool) {
 	t := extract.rootNode
 	parentValid := false
-	for i:=len(labels)-1; i>=0; i-- {
+	for i := len(labels) - 1; i >= 0; i-- {
 		lab := labels[i]
 		n, found := t.matches[lab]
 		_, starfound := t.matches["*"]
@@ -161,7 +163,7 @@ func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
 		case found:
 			fallthrough
 		case parentValid:
-			return i+1, true
+			return i + 1, true
 		case starfound:
 			parentValid = true
 		default:
@@ -172,13 +174,13 @@ func (extract *TLDExtract) getTldIndex (labels []string) (int, bool) {
 }
 
 //return sub domain,root domain
-func subdomain(d string) (string , string) {
+func subdomain(d string) (string, string) {
 	ps := strings.Split(d, ".")
 	l := len(ps)
 	if l == 1 {
 		return "", d
 	}
-	return strings.Join(ps[0:l - 1], "."), ps[l - 1]
+	return strings.Join(ps[0:l-1], "."), ps[l-1]
 }
 
 func download() ([]byte, error) {
