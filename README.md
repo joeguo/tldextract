@@ -55,5 +55,5 @@ const (
 	Ip6
 )
 ```
-Demo:[roseo.net](http://roseo.net)
+Demo:[domainrx.com](http://domainrx.com)
 ========
