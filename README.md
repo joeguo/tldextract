@@ -30,7 +30,7 @@ import (
 func main() {
 	urls := []string{"git+ssh://www.github.com:8443/", "http://media.forums.theregister.co.uk", "http://218.15.32.76", "http://google.com?q=cats"}
 	cache := "/tmp/tld.cache"
-	extract := tldextract.New(cache,false)
+	extract, _ := tldextract.New(cache,false)
 
 	for _, u := range (urls) {
 		result:=extract.Extract(u)
