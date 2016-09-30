@@ -184,7 +184,7 @@ func subdomain(d string) (string, string) {
 }
 
 func download() ([]byte, error) {
-	u := "https://mxr.mozilla.org/mozilla-central/source/netwerk/dns/effective_tld_names.dat?raw=1"
+	u := "https://publicsuffix.org/list/effective_tld_names.dat"
 	resp, err := http.Get(u)
 	if err != nil {
 		return []byte(""), err
