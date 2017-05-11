@@ -51,7 +51,9 @@ func New(cacheFile string, debug bool) (*TLDExtract, error) {
 		if err != nil {
 			return &TLDExtract{}, err
 		}
-		ioutil.WriteFile(cacheFile, data, 0644)
+		if err = ioutil.WriteFile(cacheFile, data, 0644); err != nil {
+			return &TLDExtract{}, err
+		}
 	}
 	ts := strings.Split(string(data), "\n")
 	newMap := make(map[string]*Trie)
