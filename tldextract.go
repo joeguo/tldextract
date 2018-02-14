@@ -26,9 +26,11 @@ type Result struct {
 }
 
 type TLDExtract struct {
-	CacheFile string
-	rootNode  *Trie
-	debug     bool
+	CacheFile  string
+	rootNode   *Trie
+	debug      bool
+	noValidate bool // do not validate URL schema
+	noStrip    bool // do not strip .html suffix from URL
 }
 
 type Trie struct {
@@ -43,7 +45,7 @@ var (
 	ip4regex    = regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])`)
 )
 
-//New create a new *TLDExtract, it may be shared between goroutines,we usually need a single instance in an application.
+// New creates a new *TLDExtract, it may be shared between goroutines, we usually need a single instance in an application.
 func New(cacheFile string, debug bool) (*TLDExtract, error) {
 	data, err := ioutil.ReadFile(cacheFile)
 	if err != nil {
@@ -72,6 +74,16 @@ func New(cacheFile string, debug bool) (*TLDExtract, error) {
 	return &TLDExtract{CacheFile: cacheFile, rootNode: rootNode, debug: debug}, nil
 }
 
+// SetNoValidate disables schema check in order to increase performance.
+func (extract *TLDExtract) SetNoValidate() {
+	extract.noValidate = true
+}
+
+// SetNoStrip disables URL stripping in order to increase performance.
+func (extract *TLDExtract) SetNoStrip() {
+	extract.noStrip = true
+}
+
 func addTldRule(rootNode *Trie, labels []string, ex bool) {
 	numlabs := len(labels)
 	t := rootNode
@@ -92,25 +104,28 @@ func addTldRule(rootNode *Trie, labels []string, ex bool) {
 func (extract *TLDExtract) Extract(u string) *Result {
 	input := u
 	u = strings.ToLower(u)
-	u = schemaregex.ReplaceAllString(u, "")
-	i := strings.Index(u, "@")
-	if i != -1 {
-		u = u[i+1:]
-	}
-
-	index := strings.IndexFunc(u, func(r rune) bool {
-		switch r {
-		case '&', '/', '?', ':', '#':
-			return true
+	if !extract.noValidate {
+		u = schemaregex.ReplaceAllString(u, "")
+		i := strings.Index(u, "@")
+		if i != -1 {
+			u = u[i+1:]
 		}
-		return false
-	})
-	if index != -1 {
-		u = u[0:index]
-	}
 
-	if strings.HasSuffix(u, ".html") {
-		u = u[0 : len(u)-len(".html")]
+		index := strings.IndexFunc(u, func(r rune) bool {
+			switch r {
+			case '&', '/', '?', ':', '#':
+				return true
+			}
+			return false
+		})
+		if index != -1 {
+			u = u[0:index]
+		}
+	}
+	if !extract.noStrip {
+		if strings.HasSuffix(u, ".html") {
+			u = u[0 : len(u)-len(".html")]
+		}
 	}
 	if extract.debug {
 		fmt.Printf("%s;%s\n", u, input)
@@ -186,7 +201,7 @@ func subdomain(d string) (string, string) {
 }
 
 func download() ([]byte, error) {
-	u := "https://publicsuffix.org/list/effective_tld_names.dat"
+	u := "https://publicsuffix.org/list/public_suffix_list.dat"
 	resp, err := http.Get(u)
 	if err != nil {
 		return []byte(""), err
