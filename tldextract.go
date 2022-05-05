@@ -41,7 +41,7 @@ type Trie struct {
 
 var (
 	schemaregex = regexp.MustCompile(`^([abcdefghijklmnopqrstuvwxyz0123456789\+\-\.]+:)?//`)
-	domainregex = regexp.MustCompile(`^[a-z0-9-\p{Han}]{1,63}$`)
+	domainregex = regexp.MustCompile(`^[a-z0-9-\p{L}]{1,63}$`)
 	ip4regex    = regexp.MustCompile(`(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])`)
 )
 
